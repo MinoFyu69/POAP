@@ -196,7 +196,7 @@ export default function AdminDashboard() {
       const [booksRes, usersRes, peminjamanRes, approvalsRes] = await Promise.all([
         fetch('/api/admin/buku'),
         fetch('/api/admin/users'),
-        fetch('/api/peminjaman'),
+        fetch('/api/peminjaman'), // ✅ Endpoint yang benar
         fetch('/api/admin/buku?status=pending')
       ]);
 
@@ -204,6 +204,13 @@ export default function AdminDashboard() {
       const users = await usersRes.json();
       const peminjaman = await peminjamanRes.json();
       const approvals = await approvalsRes.json();
+      
+      console.log('📊 Dashboard Data:', {
+        books: books.length,
+        users: users.length,
+        peminjaman: peminjaman.length,
+        approvals: approvals.length
+      });
 
       // Hitung stats
       const booksArray = Array.isArray(books) ? books : [];
@@ -322,7 +329,7 @@ export default function AdminDashboard() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           🏠 Dashboard
         </h1>
         <p className="text-gray-600">Ringkasan aktivitas perpustakaan</p>
