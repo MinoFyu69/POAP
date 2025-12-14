@@ -1,87 +1,129 @@
-// D:\Projek Coding\projek_pkl\src\app\api\admin\buku\route.js
-// FIXED: Removed is_approved, now uses status field
+// src/app/api/admin/buku/route.js
+// COMPLETE API for Admin Book Management with Approval
 
 import { NextResponse } from 'next/server';
 import { getDb, initDb, withTransaction } from '@/lib/db';
-import { getRoleFromRequest, requireRole, ROLES } from '@/lib/roles';
+import { requireRole, ROLES, getRoleFromRequest } from '@/lib/roles';
 
+// GET: Fetch books by status (for admin)
 export async function GET(req) {
   await initDb();
-  const role = await getRoleFromRequest(req);
   const db = getDb();
-  
+  const role = getRoleFromRequest(req);
+
   try {
     const { searchParams } = new URL(req.url);
-    const statusFilter = searchParams.get('status'); // pending, approved, rejected
+    const status = searchParams.get('status'); // 'pending', 'approved', 'rejected', atau null (semua)
     
-    // Admin dan Staf bisa lihat semua buku termasuk yang pending
-    const includeAll = role === ROLES.ADMIN || role === ROLES.STAF;
+    let query = `
+      SELECT 
+        b.id,
+        b.judul,
+        b.penulis,
+        b.penerbit,
+        b.tahun_terbit,
+        b.isbn,
+        b.jumlah_halaman,
+        b.deskripsi,
+        b.stok_tersedia,
+        b.stok_total,
+        b.sampul_buku,
+        b.genre_id,
+        b.status,
+        b.created_by,
+        b.approved_by,
+        b.approved_at,
+        b.rejected_at,
+        b.rejection_reason,
+        b.created_at,
+        b.updated_at,
+        g.nama_genre,
+        u1.username as created_by_username,
+        u1.nama_lengkap as created_by_name,
+        u2.username as approved_by_username,
+        u2.nama_lengkap as approved_by_name
+      FROM buku b
+      LEFT JOIN genre g ON b.genre_id = g.id
+      LEFT JOIN users u1 ON b.created_by = u1.id
+      LEFT JOIN users u2 ON b.approved_by = u2.id
+    `;
     
-    let query = `SELECT b.*, g.nama_genre FROM buku b LEFT JOIN genre g ON b.genre_id = g.id`;
     const params = [];
     
-    if (!includeAll) {
-      // Non-admin/staf hanya bisa lihat yang approved
+    // ✅ FIX: Admin bisa lihat semua buku, tapi default tampilkan approved
+    if (role === ROLES.ADMIN) {
+      // Jika ada filter status, gunakan itu
+      if (status && status !== 'all') {
+        query += ` WHERE b.status = $1`;
+        params.push(status);
+      }
+      // Jika tidak ada filter, tampilkan semua
+    } else {
+      // Non-admin hanya bisa lihat approved
       query += ` WHERE b.status = 'approved'`;
-    } else if (statusFilter) {
-      // Admin/staf bisa filter by status
-      query += ` WHERE b.status = $1`;
-      params.push(statusFilter);
     }
     
-    query += ` ORDER BY b.created_at DESC`;
+    query += ` ORDER BY 
+      CASE b.status 
+        WHEN 'pending' THEN 1 
+        WHEN 'approved' THEN 2 
+        WHEN 'rejected' THEN 3 
+      END,
+      b.created_at DESC
+    `;
     
     const result = await db.query(query, params);
     
-    console.log('✅ Buku fetched:', result.rows.length, `(role: ${role}, status: ${statusFilter || 'all'})`);
+    console.log(`✅ Buku fetched: ${result.rows.length} (role: ${role}, status filter: ${status || 'all'})`);
+    
     return NextResponse.json(result.rows);
   } catch (error) {
-    console.error('❌ Error fetching buku:', error);
+    console.error('❌ Error fetching books:', error);
     return NextResponse.json({ 
-      message: 'Failed to fetch buku', 
+      message: 'Failed to fetch books', 
       error: error.message 
     }, { status: 500 });
   }
 }
 
+// POST: Add new book (Admin only - langsung approved)
 export async function POST(req) {
   const { ok, user } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  
+
+  let body;
   try {
-    const body = await req.json();
-    const { 
-      judul, 
-      penulis, 
-      penerbit,
-      tahun_terbit,
-      isbn,
-      jumlah_halaman,
-      deskripsi,
-      stok_tersedia = 0, 
-      stok_total = 0,
-      sampul_buku,
-      genre_id, 
-      tag_ids = [] 
-    } = body;
-    
-    // Validation
-    if (!judul || !penulis) {
-      return NextResponse.json({ 
-        message: 'Judul dan penulis wajib diisi' 
-      }, { status: 400 });
-    }
+    body = await req.json();
+  } catch (error) {
+    console.error('❌ Invalid JSON:', error);
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
 
-    // Validate stok
-    if (stok_tersedia > stok_total) {
-      return NextResponse.json({ 
-        message: 'Stok tersedia tidak boleh lebih dari stok total' 
-      }, { status: 400 });
-    }
+  const { 
+    judul, penulis, penerbit, tahun_terbit, isbn, jumlah_halaman,
+    deskripsi, stok_tersedia = 0, stok_total = 0, sampul_buku,
+    genre_id, tag_ids = []
+  } = body;
+  
+  console.log('📝 Creating new book:', { judul, penulis, isbn });
+  
+  if (!judul || !penulis) {
+    return NextResponse.json({ 
+      message: 'Judul dan penulis wajib diisi' 
+    }, { status: 400 });
+  }
 
+  // Validate stok
+  if (stok_tersedia > stok_total) {
+    return NextResponse.json({ 
+      message: 'Stok tersedia tidak boleh lebih dari stok total' 
+    }, { status: 400 });
+  }
+
+  try {
     const createdId = await withTransaction(async (client) => {
       // Admin bisa langsung add buku yang sudah approved
       const insertResult = await client.query(`
@@ -149,37 +191,40 @@ export async function POST(req) {
   }
 }
 
+// PUT: Update book (Admin only)
 export async function PUT(req) {
   const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  
+
+  let body;
   try {
-    const body = await req.json();
-    const { id, tag_ids, nama_genre, ...updateFields } = body;
-    
-    if (!id) {
-      return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
-    }
+    body = await req.json();
+  } catch (error) {
+    console.error('❌ Invalid JSON:', error);
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
 
-    // Validate stok if provided
-    if (updateFields.stok_tersedia !== undefined && updateFields.stok_total !== undefined) {
-      if (updateFields.stok_tersedia > updateFields.stok_total) {
-        return NextResponse.json({ 
-          message: 'Stok tersedia tidak boleh lebih dari stok total' 
-        }, { status: 400 });
-      }
-    }
+  const { id, tag_ids, nama_genre, ...updateFields } = body;
+  
+  console.log('✏️ Updating book:', { id, updateFields });
+  
+  if (!id) {
+    return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
+  }
 
-    // Validate status if provided
-    if (updateFields.status && !['pending', 'approved', 'rejected'].includes(updateFields.status)) {
+  // Validate stok if provided
+  if (updateFields.stok_tersedia !== undefined && updateFields.stok_total !== undefined) {
+    if (updateFields.stok_tersedia > updateFields.stok_total) {
       return NextResponse.json({ 
-        message: 'Status harus pending, approved, atau rejected' 
+        message: 'Stok tersedia tidak boleh lebih dari stok total' 
       }, { status: 400 });
     }
+  }
 
+  try {
     await withTransaction(async (client) => {
       // Check if book exists
       const checkResult = await client.query(`SELECT * FROM buku WHERE id = $1`, [id]);
@@ -193,7 +238,7 @@ export async function PUT(req) {
       let paramCount = 0;
       
       // Exclude read-only fields
-      const excludeFields = ['id', 'created_at', 'created_by', 'approved_by', 'approved_at', 'rejected_at'];
+      const excludeFields = ['id', 'created_at', 'created_by', 'approved_by', 'approved_at', 'rejected_at', 'updated_at'];
       
       Object.keys(updateFields).forEach(key => {
         if (updateFields[key] !== undefined && !excludeFields.includes(key)) {
@@ -204,12 +249,11 @@ export async function PUT(req) {
       });
       
       if (updates.length > 0) {
-        updates.push(`updated_at = CURRENT_TIMESTAMP`);
         paramCount++;
         values.push(id);
         
         await client.query(
-          `UPDATE buku SET ${updates.join(', ')} WHERE id = $${paramCount}`,
+          `UPDATE buku SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${paramCount}`,
           values
         );
       }
@@ -262,6 +306,7 @@ export async function PUT(req) {
   }
 }
 
+// DELETE: Delete book (admin can delete any book)
 export async function DELETE(req) {
   const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
@@ -273,8 +318,20 @@ export async function DELETE(req) {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get('id'));
     
+    console.log('🗑️ Deleting book:', id);
+    
     if (!id) {
       return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
+    }
+    
+    // Check if book exists
+    const checkResult = await db.query(
+      `SELECT * FROM buku WHERE id = $1`, 
+      [id]
+    );
+    
+    if (checkResult.rows.length === 0) {
+      return NextResponse.json({ message: 'Buku tidak ditemukan' }, { status: 404 });
     }
     
     // Check if book is currently borrowed
@@ -289,14 +346,13 @@ export async function DELETE(req) {
       }, { status: 400 });
     }
     
-    const result = await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
+    await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
     
-    if (result.rowCount === 0) {
-      return NextResponse.json({ message: 'Buku tidak ditemukan' }, { status: 404 });
-    }
-    
-    console.log('✅ Buku deleted, ID:', id);
-    return NextResponse.json({ success: true });
+    console.log('✅ Buku deleted by admin, ID:', id);
+    return NextResponse.json({ 
+      success: true,
+      message: 'Buku berhasil dihapus'
+    });
   } catch (error) {
     console.error('❌ Error deleting buku:', error);
     return NextResponse.json(

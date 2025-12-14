@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Users, Clock, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
+import { BookOpen, Users, Clock, CheckCircle, TrendingUp, AlertCircle, XCircle, Archive } from 'lucide-react';
 
-const DashboardCard = ({ title, value, icon: Icon, color, trend }) => (
-  <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+const DashboardCard = ({ title, value, icon: Icon, color, trend, loading }) => (
+  <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all">
     <div className="flex items-center justify-between mb-4">
       <div className={`p-3 rounded-lg ${color}`}>
         <Icon size={24} className="text-white" />
@@ -18,51 +18,150 @@ const DashboardCard = ({ title, value, icon: Icon, color, trend }) => (
       )}
     </div>
     <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
-    <p className="text-3xl font-bold text-gray-800">{value}</p>
+    {loading ? (
+      <div className="h-9 w-20 bg-gray-200 animate-pulse rounded"></div>
+    ) : (
+      <p className="text-3xl font-bold text-gray-800">{value}</p>
+    )}
   </div>
 );
 
-const RecentActivity = ({ activities }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
-    <h3 className="text-lg font-bold text-gray-800 mb-4">Aktivitas Terbaru</h3>
+const RecentActivity = ({ activities, loading }) => (
+  <div className="bg-white rounded-xl shadow-md p-6">
+    <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Aktivitas Terbaru</h3>
     <div className="space-y-3">
-      {activities.map((activity, index) => (
-        <div key={index} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-          <div className={`p-2 rounded-full ${activity.color}`}>
-            <activity.icon size={16} className="text-white" />
+      {loading ? (
+        // Loading skeleton
+        Array(4).fill(0).map((_, i) => (
+          <div key={i} className="flex items-start gap-3 p-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-800">{activity.title}</p>
-            <p className="text-xs text-gray-500">{activity.time}</p>
-          </div>
+        ))
+      ) : activities.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Archive size={48} className="mx-auto mb-2 text-gray-300" />
+          <p>Belum ada aktivitas</p>
         </div>
-      ))}
+      ) : (
+        activities.map((activity, index) => (
+          <div key={index} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+            <div className={`p-2 rounded-full ${activity.color}`}>
+              <activity.icon size={16} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-800">{activity.title}</p>
+              <p className="text-xs text-gray-500">{activity.time}</p>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   </div>
 );
 
-const PendingApprovals = ({ approvals }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
+const PendingApprovals = ({ approvals, loading }) => (
+  <div className="bg-white rounded-xl shadow-md p-6">
     <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-bold text-gray-800">Menunggu Approval</h3>
+      <h3 className="text-lg font-bold text-gray-800">⏳ Menunggu Approval</h3>
       <span className="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full">
-        {approvals.length}
+        {loading ? '...' : approvals.length}
       </span>
     </div>
     <div className="space-y-3">
-      {approvals.map((approval, index) => (
-        <div key={index} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-800">{approval.title}</p>
-            <p className="text-xs text-gray-500">Diajukan oleh: {approval.staff}</p>
+      {loading ? (
+        // Loading skeleton
+        Array(3).fill(0).map((_, i) => (
+          <div key={i} className="p-3 bg-gray-100 rounded-lg animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
           </div>
-          <AlertCircle size={20} className="text-amber-600" />
+        ))
+      ) : approvals.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <CheckCircle size={48} className="mx-auto mb-2 text-green-300" />
+          <p className="font-medium">Semua sudah diapprove! 🎉</p>
         </div>
-      ))}
+      ) : (
+        approvals.map((approval, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-800">{approval.judul}</p>
+              <p className="text-xs text-gray-500">
+                {approval.penulis} • Diajukan {new Date(approval.created_at).toLocaleDateString('id-ID')}
+              </p>
+            </div>
+            <AlertCircle size={20} className="text-amber-600" />
+          </div>
+        ))
+      )}
     </div>
-    <button className="w-full mt-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-      Lihat Semua
-    </button>
+    {!loading && approvals.length > 0 && (
+      <button 
+        onClick={() => window.location.href = '/admin/approval-buku'}
+        className="w-full mt-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold shadow-md hover:shadow-lg"
+      >
+        Lihat Semua
+      </button>
+    )}
+  </div>
+);
+
+const PeminjamanStats = ({ stats, loading }) => (
+  <div className="bg-white rounded-xl shadow-md p-6">
+    <h3 className="text-lg font-bold text-gray-800 mb-4">📚 Status Peminjaman</h3>
+    <div className="grid grid-cols-2 gap-4">
+      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="text-yellow-600" size={20} />
+          <span className="text-xs font-medium text-yellow-700">Pending</span>
+        </div>
+        {loading ? (
+          <div className="h-8 w-12 bg-yellow-200 animate-pulse rounded"></div>
+        ) : (
+          <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+        )}
+      </div>
+
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <div className="flex items-center gap-2 mb-2">
+          <BookOpen className="text-blue-600" size={20} />
+          <span className="text-xs font-medium text-blue-700">Dipinjam</span>
+        </div>
+        {loading ? (
+          <div className="h-8 w-12 bg-blue-200 animate-pulse rounded"></div>
+        ) : (
+          <p className="text-2xl font-bold text-blue-600">{stats.dipinjam}</p>
+        )}
+      </div>
+
+      <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertCircle className="text-red-600" size={20} />
+          <span className="text-xs font-medium text-red-700">Terlambat</span>
+        </div>
+        {loading ? (
+          <div className="h-8 w-12 bg-red-200 animate-pulse rounded"></div>
+        ) : (
+          <p className="text-2xl font-bold text-red-600">{stats.terlambat}</p>
+        )}
+      </div>
+
+      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+        <div className="flex items-center gap-2 mb-2">
+          <CheckCircle className="text-green-600" size={20} />
+          <span className="text-xs font-medium text-green-700">Kembali</span>
+        </div>
+        {loading ? (
+          <div className="h-8 w-12 bg-green-200 animate-pulse rounded"></div>
+        ) : (
+          <p className="text-2xl font-bold text-green-600">{stats.dikembalikan}</p>
+        )}
+      </div>
+    </div>
   </div>
 );
 
@@ -74,6 +173,15 @@ export default function AdminDashboard() {
     pendingApprovals: 0
   });
   
+  const [peminjamanStats, setPeminjamanStats] = useState({
+    pending: 0,
+    dipinjam: 0,
+    dikembalikan: 0,
+    terlambat: 0
+  });
+
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,62 +189,142 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-  try {
-    // Fetch books
-    const booksRes = await fetch('/api/admin/buku');
-    const books = await booksRes.json();
-    
-    // Fetch users
-    const usersRes = await fetch('/api/admin/users');
-    const users = await usersRes.json();
-    
-    // Fetch peminjaman
-    const peminjamanRes = await fetch('/api/admin/peminjaman?status=dipinjam');
-    const peminjaman = await peminjamanRes.json();
-    
-    // ✅ FIX: Fetch pending approvals menggunakan endpoint yang sama
-    const approvalsRes = await fetch('/api/admin/buku?status=pending');
-    const approvals = await approvalsRes.json();
+    try {
+      setLoading(true);
+      
+      // Fetch semua data secara parallel
+      const [booksRes, usersRes, peminjamanRes, approvalsRes] = await Promise.all([
+        fetch('/api/admin/buku'),
+        fetch('/api/admin/users'),
+        fetch('/api/peminjaman'),
+        fetch('/api/admin/buku?status=pending')
+      ]);
 
-    setStats({
-      totalBooks: Array.isArray(books) ? books.length : 0,
-      totalUsers: Array.isArray(users) ? users.length : 0,
-      activeBorrowings: Array.isArray(peminjaman) ? peminjaman.length : 0,
-      pendingApprovals: Array.isArray(approvals) ? approvals.length : 0
+      const books = await booksRes.json();
+      const users = await usersRes.json();
+      const peminjaman = await peminjamanRes.json();
+      const approvals = await approvalsRes.json();
+
+      // Hitung stats
+      const booksArray = Array.isArray(books) ? books : [];
+      const usersArray = Array.isArray(users) ? users : [];
+      const peminjamanArray = Array.isArray(peminjaman) ? peminjaman : [];
+      const approvalsArray = Array.isArray(approvals) ? approvals : [];
+
+      setStats({
+        totalBooks: booksArray.length,
+        totalUsers: usersArray.length,
+        activeBorrowings: peminjamanArray.filter(p => p.status === 'dipinjam').length,
+        pendingApprovals: approvalsArray.length
+      });
+
+      // Stats peminjaman detail
+      setPeminjamanStats({
+        pending: peminjamanArray.filter(p => p.status === 'pending').length,
+        dipinjam: peminjamanArray.filter(p => p.status === 'dipinjam').length,
+        dikembalikan: peminjamanArray.filter(p => p.status === 'dikembalikan').length,
+        terlambat: peminjamanArray.filter(p => p.hari_terlambat > 0 && p.status === 'dipinjam').length
+      });
+
+      // Pending approvals untuk ditampilkan
+      setPendingApprovals(approvalsArray.slice(0, 5)); // Ambil 5 teratas
+
+      // Generate recent activities dari peminjaman terbaru
+      const activities = generateActivities(peminjamanArray, booksArray, usersArray);
+      setRecentActivities(activities);
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setLoading(false);
+    }
+  };
+
+  const generateActivities = (peminjaman, books, users) => {
+    const activities = [];
+    
+    // Sort peminjaman by updated_at or created_at
+    const sortedPeminjaman = [...peminjaman].sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at);
+      const dateB = new Date(b.updated_at || b.created_at);
+      return dateB - dateA;
     });
+
+    // Ambil 5 aktivitas terbaru
+    sortedPeminjaman.slice(0, 5).forEach(p => {
+      let activity = null;
+
+      if (p.status === 'dikembalikan') {
+        activity = {
+          icon: CheckCircle,
+          title: `Buku "${p.buku_judul}" dikembalikan oleh ${p.nama_lengkap}`,
+          time: formatTimeAgo(p.updated_at || p.created_at),
+          color: 'bg-green-500'
+        };
+      } else if (p.status === 'dipinjam') {
+        activity = {
+          icon: BookOpen,
+          title: `"${p.buku_judul}" dipinjam oleh ${p.nama_lengkap}`,
+          time: formatTimeAgo(p.tanggal_pinjam || p.created_at),
+          color: 'bg-blue-500'
+        };
+      } else if (p.status === 'pending') {
+        activity = {
+          icon: Clock,
+          title: `${p.nama_lengkap} mengajukan peminjaman "${p.buku_judul}"`,
+          time: formatTimeAgo(p.created_at),
+          color: 'bg-orange-500'
+        };
+      } else if (p.status === 'rejected') {
+        activity = {
+          icon: XCircle,
+          title: `Peminjaman "${p.buku_judul}" ditolak`,
+          time: formatTimeAgo(p.updated_at || p.created_at),
+          color: 'bg-red-500'
+        };
+      }
+
+      if (activity) activities.push(activity);
+    });
+
+    // Tambah aktivitas user baru jika ada
+    if (users && users.length > 0) {
+      const recentUser = users[users.length - 1];
+      activities.push({
+        icon: Users,
+        title: `Member baru "${recentUser.nama_lengkap}" terdaftar`,
+        time: formatTimeAgo(recentUser.created_at),
+        color: 'bg-purple-500'
+      });
+    }
+
+    return activities.slice(0, 5);
+  };
+
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return 'Baru saja';
     
-    setLoading(false);
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    setLoading(false);
-  }
-};
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  const recentActivities = [
-    { icon: CheckCircle, title: 'Buku "Laskar Pelangi" dikembalikan', time: '5 menit yang lalu', color: 'bg-green-500' },
-    { icon: BookOpen, title: 'Buku baru "Sapiens" ditambahkan', time: '1 jam yang lalu', color: 'bg-blue-500' },
-    { icon: Users, title: 'Member baru "Ahmad" terdaftar', time: '2 jam yang lalu', color: 'bg-purple-500' },
-    { icon: Clock, title: 'Peminjaman "Bumi Manusia" oleh Siti', time: '3 jam yang lalu', color: 'bg-orange-500' }
-  ];
-
-  const pendingApprovals = [
-    { title: 'The Pragmatic Programmer', staff: 'Staf 1' },
-    { title: 'Clean Code', staff: 'Staf 1' },
-    { title: 'Design Patterns', staff: 'Staf 2' }
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+    if (diffMins < 1) return 'Baru saja';
+    if (diffMins < 60) return `${diffMins} menit yang lalu`;
+    if (diffHours < 24) return `${diffHours} jam yang lalu`;
+    if (diffDays < 7) return `${diffDays} hari yang lalu`;
+    
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Dashboard</h1>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          🏠 Dashboard
+        </h1>
         <p className="text-gray-600">Ringkasan aktivitas perpustakaan</p>
       </div>
 
@@ -147,33 +335,36 @@ export default function AdminDashboard() {
           value={stats.totalBooks}
           icon={BookOpen}
           color="bg-blue-500"
-          trend="+12%"
+          loading={loading}
         />
         <DashboardCard
           title="Total User"
           value={stats.totalUsers}
           icon={Users}
           color="bg-green-500"
-          trend="+8%"
+          loading={loading}
         />
         <DashboardCard
           title="Sedang Dipinjam"
           value={stats.activeBorrowings}
           icon={Clock}
           color="bg-orange-500"
+          loading={loading}
         />
         <DashboardCard
           title="Menunggu Approval"
           value={stats.pendingApprovals}
           icon={AlertCircle}
           color="bg-red-500"
+          loading={loading}
         />
       </div>
 
-      {/* Activity and Approvals */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity activities={recentActivities} />
-        <PendingApprovals approvals={pendingApprovals} />
+      {/* Activity, Approvals, and Peminjaman Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <RecentActivity activities={recentActivities} loading={loading} />
+        <PendingApprovals approvals={pendingApprovals} loading={loading} />
+        <PeminjamanStats stats={peminjamanStats} loading={loading} />
       </div>
     </div>
   );

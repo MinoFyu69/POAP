@@ -15,8 +15,7 @@ const StafLayout = ({ children }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/staf/dashboard' },
     { id: 'buku', label: 'Manajemen Buku', icon: BookOpen, path: '/staf/buku' },
-    { id: 'genre', label: 'Manajemen Genre', icon: Users, path: '/staf/genre' },
-    { id: 'tags', label: 'Manajemen Tags', icon: Users, path: '/staf/tags' },
+    { id: 'tags', label: 'Manajemen Tags & Genre', icon: Users, path: '/staf/tags' },
     { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/staf/katalog' },
     { id: 'peminjaman', label: 'Peminjaman', icon: Bookmark, path: '/staf/peminjaman' },
   ];

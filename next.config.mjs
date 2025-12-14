@@ -15,9 +15,19 @@ const nextConfig = {
         hostname: 'localhost',
         pathname: '/uploads/**',
       },
+      // Tambahan untuk Google Images
+      {
+        protocol: 'https',
+        hostname: 'encrypted-tbn0.gstatic.com',
+      },
+      // Tambahan untuk domain gambar eksternal lainnya (opsional)
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
+      },
     ],
     // Jika Next.js versi lama (12 atau dibawah), gunakan domains
-    // domains: ['localhost'],
+    // domains: ['localhost', 'encrypted-tbn0.gstatic.com'],
   },
 };
 

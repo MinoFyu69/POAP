@@ -14,6 +14,23 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // ✅ FIX: Generate particles on client-side only
+  const [particles, setParticles] = useState([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // Generate particles after component mounts (client-side only)
+    const generatedParticles = Array.from({ length: 20 }, () => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      delay: `${Math.random() * 5}s`,
+      duration: `${5 + Math.random() * 10}s`,
+    }));
+    
+    setParticles(generatedParticles);
+    setIsMounted(true);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,7 +43,7 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // ✅ CRITICAL: Kirim dan terima cookies
+        credentials: 'include',
         body: JSON.stringify(formData)
       });
 
@@ -37,9 +54,6 @@ export default function LoginPage() {
         console.log('✅ Login success!');
         console.log('👤 User role_id:', data.user.role_id);
         console.log('🍪 Token stored in httpOnly cookie');
-        
-        // ❌ JANGAN simpan ke localStorage lagi!
-        // Token sudah otomatis tersimpan di httpOnly cookie
         
         // Redirect based on role
         let redirectPath;
@@ -93,21 +107,23 @@ export default function LoginPage() {
         <div className="absolute -bottom-8 left-20 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      {/* Floating Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-white rounded-full opacity-20 animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${5 + Math.random() * 10}s`
-            }}
-          />
-        ))}
-      </div>
+      {/* Floating Particles - ✅ FIXED: Only render after mount */}
+      {isMounted && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {particles.map((particle, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-white rounded-full opacity-20 animate-float"
+              style={{
+                left: particle.left,
+                top: particle.top,
+                animationDelay: particle.delay,
+                animationDuration: particle.duration,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">

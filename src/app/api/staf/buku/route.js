@@ -210,8 +210,26 @@ export async function POST(req) {
     }, { status: 201 });
   } catch (error) {
     console.error('❌ Error creating buku:', error);
+    
+    // ✅ Handle specific database errors
+    let userMessage = 'Gagal menambah buku';
+    
+    if (error.code === '23505') { // Unique constraint violation
+      if (error.constraint === 'buku_isbn_key') {
+        const isbnMatch = error.detail?.match(/\(([^)]+)\)/);
+        const isbnValue = isbnMatch ? isbnMatch[1] : 'unknown';
+        userMessage = `ISBN "${isbnValue}" sudah digunakan oleh buku lain. Gunakan ISBN yang berbeda atau kosongkan field ISBN.`;
+      } else {
+        userMessage = 'Data sudah ada di database. Periksa ISBN atau data lainnya.';
+      }
+    } else if (error.code === '22001') { // String too long
+      userMessage = 'Data terlalu panjang. Periksa URL gambar atau field lainnya.';
+    } else if (error.code === '23503') { // Foreign key violation
+      userMessage = 'Genre atau tag yang dipilih tidak valid.';
+    }
+    
     return NextResponse.json(
-      { message: 'Gagal menambah buku', error: error.message }, 
+      { message: userMessage, error: error.message }, 
       { status: 500 }
     );
   }
@@ -327,8 +345,24 @@ export async function PUT(req) {
     });
   } catch (error) {
     console.error('❌ Error updating buku:', error);
+    
+    // ✅ Handle specific database errors
+    let userMessage = error.message || 'Gagal update buku';
+    
+    if (error.code === '23505') { // Unique constraint violation
+      if (error.constraint === 'buku_isbn_key') {
+        const isbnMatch = error.detail?.match(/\(([^)]+)\)/);
+        const isbnValue = isbnMatch ? isbnMatch[1] : 'unknown';
+        userMessage = `ISBN "${isbnValue}" sudah digunakan oleh buku lain.`;
+      } else {
+        userMessage = 'Data sudah ada di database. Periksa ISBN atau data lainnya.';
+      }
+    } else if (error.code === '22001') { // String too long
+      userMessage = 'Data terlalu panjang. Periksa URL gambar atau field lainnya.';
+    }
+    
     return NextResponse.json(
-      { message: error.message || 'Gagal update buku' }, 
+      { message: userMessage }, 
       { status: error.message.includes('akses') ? 403 : 500 }
     );
   }
