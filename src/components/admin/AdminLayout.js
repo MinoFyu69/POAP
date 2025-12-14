@@ -87,10 +87,6 @@ const AdminLayout = ({ children }) => {
         </nav>
 
         <div className="p-4 border-t border-indigo-800 space-y-2">
-          <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-indigo-800 w-full text-left transition-colors">
-            <Settings size={20} />
-            {sidebarOpen && <span>Pengaturan</span>}
-          </button>
           <button 
             onClick={handleLogout}
             disabled={isLoggingOut}

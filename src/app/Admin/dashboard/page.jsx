@@ -31,7 +31,6 @@ const RecentActivity = ({ activities, loading }) => (
     <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Aktivitas Terbaru</h3>
     <div className="space-y-3">
       {loading ? (
-        // Loading skeleton
         Array(4).fill(0).map((_, i) => (
           <div key={i} className="flex items-start gap-3 p-3">
             <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
@@ -73,7 +72,6 @@ const PendingApprovals = ({ approvals, loading }) => (
     </div>
     <div className="space-y-3">
       {loading ? (
-        // Loading skeleton
         Array(3).fill(0).map((_, i) => (
           <div key={i} className="p-3 bg-gray-100 rounded-lg animate-pulse">
             <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -101,7 +99,7 @@ const PendingApprovals = ({ approvals, loading }) => (
     </div>
     {!loading && approvals.length > 0 && (
       <button 
-        onClick={() => window.location.href = '/admin/approval-buku'}
+        onClick={() => window.location.href = '/Admin/approval'}
         className="w-full mt-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold shadow-md hover:shadow-lg"
       >
         Lihat Semua
@@ -192,12 +190,12 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       
-      // Fetch semua data secara parallel
+      // ✅ FIX: Gunakan endpoint yang konsisten
       const [booksRes, usersRes, peminjamanRes, approvalsRes] = await Promise.all([
         fetch('/api/admin/buku'),
         fetch('/api/admin/users'),
-        fetch('/api/peminjaman'), // ✅ Endpoint yang benar
-        fetch('/api/admin/buku?status=pending')
+        fetch('/api/peminjaman'),
+        fetch('/api/admin/approve') // ✅ GANTI: endpoint yang benar untuk approval
       ]);
 
       const books = await booksRes.json();
@@ -218,11 +216,14 @@ export default function AdminDashboard() {
       const peminjamanArray = Array.isArray(peminjaman) ? peminjaman : [];
       const approvalsArray = Array.isArray(approvals) ? approvals : [];
 
+      // ✅ Filter hanya buku yang sudah approved untuk total buku
+      const approvedBooks = booksArray.filter(b => b.status === 'approved');
+
       setStats({
-        totalBooks: booksArray.length,
+        totalBooks: approvedBooks.length, // ✅ GANTI: hitung yang approved saja
         totalUsers: usersArray.length,
         activeBorrowings: peminjamanArray.filter(p => p.status === 'dipinjam').length,
-        pendingApprovals: approvalsArray.length
+        pendingApprovals: approvalsArray.length // ✅ Sudah benar dari endpoint /api/admin/approve
       });
 
       // Stats peminjaman detail
@@ -233,10 +234,10 @@ export default function AdminDashboard() {
         terlambat: peminjamanArray.filter(p => p.hari_terlambat > 0 && p.status === 'dipinjam').length
       });
 
-      // Pending approvals untuk ditampilkan
-      setPendingApprovals(approvalsArray.slice(0, 5)); // Ambil 5 teratas
+      // ✅ Pending approvals untuk ditampilkan (sudah benar)
+      setPendingApprovals(approvalsArray.slice(0, 5));
 
-      // Generate recent activities dari peminjaman terbaru
+      // Generate recent activities
       const activities = generateActivities(peminjamanArray, booksArray, usersArray);
       setRecentActivities(activities);
 
@@ -250,14 +251,12 @@ export default function AdminDashboard() {
   const generateActivities = (peminjaman, books, users) => {
     const activities = [];
     
-    // Sort peminjaman by updated_at or created_at
     const sortedPeminjaman = [...peminjaman].sort((a, b) => {
       const dateA = new Date(a.updated_at || a.created_at);
       const dateB = new Date(b.updated_at || b.created_at);
       return dateB - dateA;
     });
 
-    // Ambil 5 aktivitas terbaru
     sortedPeminjaman.slice(0, 5).forEach(p => {
       let activity = null;
 
@@ -294,7 +293,6 @@ export default function AdminDashboard() {
       if (activity) activities.push(activity);
     });
 
-    // Tambah aktivitas user baru jika ada
     if (users && users.length > 0) {
       const recentUser = users[users.length - 1];
       activities.push({
@@ -335,7 +333,6 @@ export default function AdminDashboard() {
         <p className="text-gray-600">Ringkasan aktivitas perpustakaan</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <DashboardCard
           title="Total Buku"
@@ -367,7 +364,6 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Activity, Approvals, and Peminjaman Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <RecentActivity activities={recentActivities} loading={loading} />
         <PendingApprovals approvals={pendingApprovals} loading={loading} />

@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { getUser, clearAuth } from "@/lib/client-auth";
-import { BookOpen, Search, LogOut, AlertCircle, Filter, X, TrendingUp, Package, ShoppingBag } from "lucide-react";
+import { BookOpen, Search, LogOut, AlertCircle, Filter, X, TrendingUp, Package, History } from "lucide-react";
 
 export default function MemberPage() {
   const [books, setBooks] = useState([]);
@@ -148,9 +148,6 @@ export default function MemberPage() {
     0
   );
   const approvedBooks = books.length;
-  const outOfStock = books.filter(
-    (book) => (book.stok_tersedia ?? book.stock ?? 0) === 0
-  ).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-cyan-50/30">
@@ -220,19 +217,23 @@ export default function MemberPage() {
             </div>
           </div>
 
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          {/* History Button Card */}
+          <button
+            onClick={() => window.location.href = "/member/history"}
+            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 text-left"
+          >
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
-                <TrendingUp className="w-8 h-8 text-white/90" />
+                <History className="w-8 h-8 text-white/90 group-hover:rotate-12 transition-transform" />
                 <div className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold">
-                  Habis
+                  Klik
                 </div>
               </div>
-              <p className="text-4xl font-bold text-white mb-1">{outOfStock}</p>
-              <p className="text-sm text-rose-100">Perlu ditunggu</p>
+              <p className="text-2xl font-bold text-white mb-2">📦 History</p>
+              <p className="text-sm text-purple-100">Lihat riwayat peminjaman</p>
             </div>
-          </div>
+          </button>
         </section>
 
         {/* Books Catalog Section */}

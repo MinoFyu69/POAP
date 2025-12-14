@@ -4,6 +4,24 @@ import { getDb, initDb, withTransaction } from '@/lib/db';
 import { requireRole, ROLES } from '@/lib/roles';
 
 // GET - Ambil semua peminjaman (filtered by role)
+// Helper function untuk get denda setting
+async function getDendaSetting(db) {
+  try {
+    const result = await db.query(
+      "SELECT value FROM settings WHERE key = 'denda_per_hari'"
+    );
+    
+    if (result.rows.length > 0) {
+      return parseInt(result.rows[0].value) || 2000;
+    }
+    return 2000; // Default jika setting tidak ada
+  } catch (error) {
+    console.log('⚠️ Using default denda: 2000');
+    return 2000;
+  }
+}
+
+// GET - Ambil semua peminjaman (filtered by role)
 export async function GET(req) {
   const { ok, user } = await requireRole(req, [ROLES.MEMBER, ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
@@ -15,6 +33,9 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const userId = searchParams.get('user_id');
+
+    // Get denda setting from database
+    const dendaPerHari = await getDendaSetting(db);
 
     let query = `
       SELECT 
@@ -39,13 +60,11 @@ export async function GET(req) {
     const params = [];
     let paramCount = 0;
 
-    // Member hanya bisa lihat peminjaman sendiri
     if (user.role_id === ROLES.MEMBER) {
       paramCount++;
       query += ` AND p.user_id = $${paramCount}`;
       params.push(user.userId);
     } else if (userId) {
-      // Staf/Admin bisa filter by user
       paramCount++;
       query += ` AND p.user_id = $${paramCount}`;
       params.push(userId);
@@ -61,25 +80,26 @@ export async function GET(req) {
 
     const result = await db.query(query, params);
 
-    // Hitung denda otomatis untuk yang terlambat
+    // Hitung denda otomatis menggunakan setting dari database
     const dataWithDenda = result.rows.map(row => {
       if (row.status === 'dipinjam' && row.hari_terlambat > 0) {
-        const dendaPerHari = 2000; // Default Rp 2000/hari
-        const dendaOtomatis = row.hari_terlambat * dendaPerHari;
+        const dendaOtomatis = Math.floor(row.hari_terlambat) * dendaPerHari;
         return {
           ...row,
+          denda_per_hari: dendaPerHari,
           denda_otomatis: dendaOtomatis,
           total_denda: row.denda || dendaOtomatis
         };
       }
       return {
         ...row,
+        denda_per_hari: dendaPerHari,
         denda_otomatis: 0,
         total_denda: row.denda || 0
       };
     });
 
-    console.log('✅ Peminjaman fetched:', dataWithDenda.length);
+    console.log(`✅ Peminjaman fetched: ${dataWithDenda.length} (Denda: Rp ${dendaPerHari}/hari)`);
     return NextResponse.json(dataWithDenda);
   } catch (error) {
     console.error('❌ Error fetching peminjaman:', error);
